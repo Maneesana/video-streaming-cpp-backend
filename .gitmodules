@@ -4,3 +4,6 @@
 [submodule "external/oatpp-postgresql"]
 	path = external/oatpp-postgresql
 	url = https://github.com/oatpp/oatpp-postgresql.git
+[submodule "external/oatpp-swagger"]
+	path = external/oatpp-swagger
+	url = https://github.com/oatpp/oatpp-swagger.git
