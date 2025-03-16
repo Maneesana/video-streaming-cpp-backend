@@ -35,7 +35,7 @@
 build/
 main/build
 [Bb][Uu][Ii][Ll][Dd]/
-
+cmake-build*/
 # idea
 .idea/
 cmake-build-debug/

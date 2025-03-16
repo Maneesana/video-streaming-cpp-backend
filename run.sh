@@ -1,3 +1,3 @@
 
 
-cd build && ./Release/video-streaming
+cd build && ./Debug/video-streaming
