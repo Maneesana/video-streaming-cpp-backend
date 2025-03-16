@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Ensure Oat++ is found correctly
 add_subdirectory(external/oatpp)
+add_subdirectory(external/oatpp-swagger)
+add_subdirectory(external/oatpp-postgresql)
 
 # DOWNLOAD ALL SUBMODULES
 find_package(Git QUIET)
@@ -45,12 +47,24 @@ add_library(${PROJECT_NAME}-lib STATIC
 # Include Oat++ headers properly
 target_include_directories(${PROJECT_NAME}-lib PUBLIC 
     src
-    external/oatpp/src  # Correct include path
+    external/oatpp/src  # oatpp headers
+    external/oatpp-swagger/src  # oatpp-swagger headers
+    external/oatpp-postgresql/src  # oatpp-postgresql headers
     ${CMAKE_BINARY_DIR}  # Include generated headers
+)
+add_definitions(
+        # Path to swagger-ui resources #
+        -DOATPP_SWAGGER_RES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/external/oatpp-swagger/res"
+
+        # Path to config file #
+        -DCONFIG_PATH="${CMAKE_CURRENT_LIST_DIR}/resources/config.json"
+
+        ## Path to database migration scripts
+        -DDATABASE_MIGRATIONS="${CMAKE_CURRENT_SOURCE_DIR}/sql"
 )
 
 # Ensure Oat++ is properly linked
-target_link_libraries(${PROJECT_NAME}-lib PRIVATE oatpp)
+target_link_libraries(${PROJECT_NAME}-lib PRIVATE oatpp oatpp-swagger oatpp-postgresql)
 
 # Create the main executable
 add_executable(${PROJECT_NAME} src/App.cpp)
