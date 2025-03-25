@@ -3,6 +3,11 @@
 # Exit on error
 set -e
 
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
 echo "🚀 Starting deployment process..."
 
 # Update system packages
@@ -109,8 +114,12 @@ chmod +x configure.sh build.sh run.sh
 
 # Build and run with Docker
 echo "🏗️ Building and running application..."
-# Use sudo for Docker commands
-sudo docker compose up --build -d
+# Use sudo for Docker commands and add timeout
+timeout 300 sudo docker compose up --build -d || {
+    echo "Build timed out after 5 minutes"
+    sudo docker compose logs
+    exit 1
+}
 
 # Create systemd service file
 echo "⚙️ Creating systemd service..."
@@ -127,6 +136,7 @@ WorkingDirectory=$APP_DIR
 ExecStart=/usr/bin/sudo docker compose up
 ExecStop=/usr/bin/sudo docker compose down
 Restart=always
+TimeoutStartSec=300
 
 [Install]
 WantedBy=multi-user.target
@@ -137,6 +147,17 @@ echo "🔄 Setting up systemd service..."
 sudo systemctl daemon-reload
 sudo systemctl enable video-streaming-api-v1
 sudo systemctl start video-streaming-api-v1
+
+# Wait for service to be fully started
+echo "⏳ Waiting for service to start..."
+sleep 10
+
+# Check service status
+if ! sudo systemctl is-active --quiet video-streaming-api-v1; then
+    echo "❌ Service failed to start"
+    sudo journalctl -u video-streaming-api-v1 -n 50
+    exit 1
+fi
 
 echo "✅ Deployment completed successfully!"
 echo "📝 Application is running on http://localhost:8000"
