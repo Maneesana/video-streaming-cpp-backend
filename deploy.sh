@@ -10,21 +10,78 @@ echo "📦 Updating system packages..."
 sudo apt-get update
 sudo apt-get upgrade -y
 
+# Remove old Docker packages
+echo "🧹 Removing old Docker packages..."
+sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
+sudo apt-get autoremove -y
+
+# Install Docker prerequisites
+echo "📦 Installing Docker prerequisites..."
+DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+# Add Docker's official GPG key
+echo "🔑 Adding Docker's GPG key..."
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg --batch --yes
+
+# Set up the Docker repository
+echo "📦 Setting up Docker repository..."
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install Docker
+echo "📦 Installing Docker..."
+DEBIAN_FRONTEND=noninteractive sudo apt-get update
+DEBIAN_FRONTEND=noninteractive sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
 # Install required dependencies
-echo "📦 Installing dependencies..."
-sudo apt-get install -y \
+echo "📦 Installing other dependencies..."
+DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
     build-essential \
     cmake \
     git \
     libpq-dev \
-    docker.io \
-    docker-compose \
-    dos2unix
+    dos2unix \
+    nginx \
+    certbot \
+    python3-certbot-nginx
 
 # Start and enable Docker service
 echo "🐳 Setting up Docker..."
 sudo systemctl start docker
 sudo systemctl enable docker
+
+# Configure Nginx
+echo "🌐 Configuring Nginx..."
+sudo tee /etc/nginx/sites-available/video-streaming << EOF
+server {
+    listen 80;
+    server_name subdomain.domain.com;  # Replace with your actual domain
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+# Enable the site
+sudo ln -sf /etc/nginx/sites-available/video-streaming /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl restart nginx
 
 # Add current user to docker group
 echo "👤 Adding user to docker group..."
@@ -48,7 +105,7 @@ chmod +x configure.sh build.sh run.sh
 
 # Build and run with Docker
 echo "🏗️ Building and running application..."
-docker-compose up --build -d
+docker compose up --build -d
 
 # Create systemd service file
 echo "⚙️ Creating systemd service..."
@@ -62,8 +119,8 @@ Requires=docker.service
 Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
-ExecStart=/usr/local/bin/docker-compose up
-ExecStop=/usr/local/bin/docker-compose down
+ExecStart=/usr/bin/docker compose up
+ExecStop=/usr/bin/docker compose down
 Restart=always
 
 [Install]
