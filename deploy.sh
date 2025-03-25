@@ -90,7 +90,10 @@ sudo usermod -aG docker $USER
 
 # Create application directory
 echo "📁 Setting up application directory..."
-APP_DIR="/opt/video-streaming"
+APP_DIR="/opt/video-streaming-api-v1"
+echo "Cleaning up existing directory if it exists..."
+sudo rm -rf $APP_DIR
+echo "Creating new application directory..."
 sudo mkdir -p $APP_DIR
 sudo chown -R $USER:$USER $APP_DIR
 
@@ -106,13 +109,14 @@ chmod +x configure.sh build.sh run.sh
 
 # Build and run with Docker
 echo "🏗️ Building and running application..."
-docker compose up --build -d
+# Use sudo for Docker commands
+sudo docker compose up --build -d
 
 # Create systemd service file
 echo "⚙️ Creating systemd service..."
-sudo tee /etc/systemd/system/video-streaming.service << EOF
+sudo tee /etc/systemd/system/video-streaming-api-v1.service << EOF
 [Unit]
-Description=Video Streaming Service
+Description=Video Streaming API v1 Service
 After=docker.service
 Requires=docker.service
 
@@ -120,8 +124,8 @@ Requires=docker.service
 Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
-ExecStart=/usr/bin/docker compose up
-ExecStop=/usr/bin/docker compose down
+ExecStart=/usr/bin/sudo docker compose up
+ExecStop=/usr/bin/sudo docker compose down
 Restart=always
 
 [Install]
@@ -131,10 +135,10 @@ EOF
 # Reload systemd and enable service
 echo "🔄 Setting up systemd service..."
 sudo systemctl daemon-reload
-sudo systemctl enable video-streaming
-sudo systemctl start video-streaming
+sudo systemctl enable video-streaming-api-v1
+sudo systemctl start video-streaming-api-v1
 
 echo "✅ Deployment completed successfully!"
 echo "📝 Application is running on http://localhost:8000"
-echo "📝 You can check the status with: sudo systemctl status video-streaming"
-echo "📝 View logs with: sudo journalctl -u video-streaming -f" 
+echo "📝 You can check the status with: sudo systemctl status video-streaming-api-v1"
+echo "📝 View logs with: sudo journalctl -u video-streaming-api-v1 -f" 
