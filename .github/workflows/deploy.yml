@@ -15,7 +15,6 @@ env:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
         with:
@@ -54,9 +53,8 @@ jobs:
         run: |
           docker-compose build
           docker-compose up -d
-          # Add your test commands here if needed
-          sleep 10  # Give the application time to start
-          curl -f http://localhost:8000/api/health || exit 1  # Basic health check
+          sleep 10
+          curl -f http://localhost:8000/api/health || exit 1
 
       - name: Stop containers
         run: docker-compose down
@@ -64,8 +62,7 @@ jobs:
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' # Only deploy on main branch
-
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v3
         with:
@@ -88,7 +85,6 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          # Create deployment script
           cat > deploy.sh << 'EOL'
           #!/bin/bash
           set -e
