@@ -81,13 +81,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ env.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+          echo "=== SSH key permissions ==="
+          ls -la ~/.ssh/
+          echo "=== Testing SSH connection ==="
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -v ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} 'echo "SSH connection successful"'
 
       - name: Deploy to EC2
         run: |
           # Copy files to EC2
-          scp -i ~/.ssh/deploy_key -r ./* ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/
-          scp -i ~/.ssh/deploy_key deploy.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/
+          echo "=== Copying files to EC2 ==="
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r ./* ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/
 
           # Execute deployment script
-          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} './deploy.sh'
+          echo "=== Executing deployment script ==="
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} 'chmod +x deploy.sh && ./deploy.sh'
