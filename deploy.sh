@@ -114,12 +114,42 @@ chmod +x configure.sh build.sh run.sh
 
 # Build and run with Docker
 echo "🏗️ Building and running application..."
-# Use sudo for Docker commands and add timeout
-timeout 300 sudo docker compose up --build -d || {
-    echo "Build timed out after 5 minutes"
+echo "Starting Docker build process..."
+
+# Add verbose output and timeout for Docker build
+timeout 300 sudo docker compose build --progress=plain --no-cache || {
+    echo "❌ Build failed or timed out after 5 minutes"
+    echo "Checking Docker logs..."
+    sudo docker compose logs
+    echo "Checking system resources..."
+    free -h
+    df -h
+    echo "Checking Docker status..."
+    sudo systemctl status docker
+    exit 1
+}
+
+echo "Build completed successfully. Starting containers..."
+sudo docker compose up -d || {
+    echo "❌ Failed to start containers"
     sudo docker compose logs
     exit 1
 }
+
+# Wait for containers to be healthy
+echo "Waiting for containers to be healthy..."
+for i in {1..30}; do
+    if sudo docker compose ps | grep -q "healthy"; then
+        echo "✅ Containers are healthy"
+        break
+    fi
+    echo "Waiting for containers to be healthy... ($i/30)"
+    sleep 5
+done
+
+# Check container status
+echo "Checking container status..."
+sudo docker compose ps
 
 # Create systemd service file
 echo "⚙️ Creating systemd service..."

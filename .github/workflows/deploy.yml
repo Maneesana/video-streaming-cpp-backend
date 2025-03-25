@@ -79,44 +79,60 @@ jobs:
       - name: Install SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ env.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          chmod 700 ~/.ssh
-          echo "=== SSH key permissions ==="
-          ls -la ~/.ssh/
-          echo "=== Testing SSH connection ==="
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -v ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} 'echo "SSH connection successful"'
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          # Debug: Print host (without exposing the full secret)
+          echo "Connecting to host: ${EC2_HOST:0:10}..."
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -v ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"
 
       - name: Deploy to EC2
         run: |
           # Function to retry commands
           retry() {
-            local -r -i max_attempts="$1"; shift
-            local -r cmd="$@"
-            local -i attempt_num=1
-            until $cmd
+            local max_attempts=3
+            local attempt=1
+            local wait=5
+            local exitCode=0
+
+            while (( $attempt < $max_attempts ))
             do
-              if (( attempt_num == max_attempts ))
-              then
-                echo "Attempt $attempt_num failed and there are no more attempts left!"
-                return 1
+              if "$@"; then
+                return 0
               else
-                echo "Attempt $attempt_num failed! Trying again in 5 seconds..."
-                attempt_num=$((attempt_num + 1))
-                sleep 5
+                exitCode=$?
+                echo "Attempt $attempt failed! Trying again in $wait seconds..."
+                sleep $wait
+                attempt=$(( attempt + 1 ))
+                wait=$(( wait * 2 ))
               fi
             done
+
+            if [[ $exitCode != 0 ]]; then
+              echo "All $max_attempts attempts failed!"
+              echo "Last error code: $exitCode"
+              return $exitCode
+            fi
           }
 
-          # Copy files to EC2 with retry
+          # Function to verify EC2 instance is accessible
+          verify_ec2_access() {
+            echo "Verifying EC2 instance accessibility..."
+            if ! ping -c 1 ${{ secrets.EC2_HOST }}; then
+              echo "❌ Cannot ping EC2 instance. Please check if:"
+              echo "1. The instance is running in AWS Console"
+              echo "2. The security group allows inbound ICMP traffic"
+              echo "3. The instance's public IP is correct"
+              return 1
+            fi
+            return 0
+          }
+
+          # Verify EC2 access before proceeding
+          verify_ec2_access || exit 1
+
           echo "=== Copying files to EC2 ==="
-          retry 3 scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -r ./* ubuntu@ec2-44-211-143-82.compute-1.amazonaws.com:/home/ubuntu/
-          retry 3 scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=60 -o ServerAliveCountMax=3 deploy.sh ubuntu@ec2-44-211-143-82.compute-1.amazonaws.com:/home/ubuntu/
+          retry scp -i ~/.ssh/deploy_key -r ./* ubuntu@${{ secrets.EC2_HOST }}:~/app/
 
-          # Execute deployment script with retry and nohup
-          echo "=== Executing deployment script ==="
-          retry 3 ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=60 -o ServerAliveCountMax=3 ubuntu@ec2-44-211-143-82.compute-1.amazonaws.com 'nohup ./deploy.sh > deploy.log 2>&1 &'
-
-          # Wait for deployment to complete
-          echo "=== Waiting for deployment to complete ==="
-          retry 10 ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=60 -o ServerAliveCountMax=3 ubuntu@ec2-44-211-143-82.compute-1.amazonaws.com 'while ! grep -q "✅ Deployment completed successfully!" deploy.log; do sleep 5; done'
+          echo "=== Running deployment script ==="
+          retry ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }} "cd ~/app && chmod +x deploy.sh && ./deploy.sh"
