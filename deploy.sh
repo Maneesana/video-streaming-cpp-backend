@@ -116,6 +116,7 @@ chmod +x configure.sh build.sh run.sh
 echo "🏗️ Building and running application..."
 echo "Starting Docker build process..."
 
+
 # Add verbose output and timeout for Docker build
 timeout 300 sudo docker compose build --progress=plain --no-cache || {
     echo "❌ Build failed or timed out after 5 minutes"
