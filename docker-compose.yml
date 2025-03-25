@@ -20,6 +20,12 @@ services:
       - ./sql:/app/sql
     networks:
       - video-streaming-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
   db:
     image: postgres:15
@@ -33,6 +39,12 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - video-streaming-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
 
 networks:
   video-streaming-network:

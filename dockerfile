@@ -8,6 +8,9 @@ RUN apt-get update && apt-get install -y \
     git \
     libpq-dev \
     dos2unix \
+    libssl-dev \
+    libcurl4-openssl-dev \
+    libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Verify CMake version
@@ -25,7 +28,7 @@ RUN echo "=== Contents before git operations ===" && \
     echo "=== Contents of src/dto ===" && \
     ls -la src/dto/
 
-# Initialize git repository and update submodules
+# Initialize git repository and update submodules with retry
 RUN if [ ! -d .git ]; then \
     git init && \
     git config --global --add safe.directory /app && \
@@ -35,9 +38,14 @@ RUN if [ ! -d .git ]; then \
     git commit -m "Initial commit"; \
     fi
 
-# Force update submodules
-RUN git submodule deinit -f . && \
-    git submodule update --init --recursive
+# Force update submodules with retry
+RUN for i in {1..3}; do \
+    echo "Attempt $i to update submodules..." && \
+    git submodule deinit -f . && \
+    git submodule update --init --recursive && break || \
+    if [ $i -eq 3 ]; then exit 1; fi; \
+    sleep 5; \
+    done
 
 # Debug: List contents after git operations
 RUN echo "=== Contents after git operations ===" && \
@@ -61,14 +69,14 @@ ENV OATPP_DISABLE_TESTS=TRUE
 ENV OATPP_SWAGGER_BUILD_TESTS=OFF
 ENV OATPP_POSTGRESQL_BUILD_TESTS=OFF
 
-# Build oatpp first
+# Build oatpp first with reduced parallel jobs
 RUN mkdir -p build/oatpp && \
     cd build/oatpp && \
     cmake -DCMAKE_BUILD_TYPE=Debug \
     -DOATPP_BUILD_TESTS=OFF \
     -DOATPP_DISABLE_TESTS=TRUE \
     ../../external/oatpp && \
-    make -j$(nproc) && \
+    make -j1 && \
     make install
 
 # Debug: List contents before main build
@@ -77,7 +85,7 @@ RUN echo "=== Contents before main build ===" && \
     echo "=== Contents of src/dto ===" && \
     ls -la src/dto/
 
-# Build the main project
+# Build the main project with reduced parallel jobs and memory constraints
 RUN mkdir -p build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Debug \
@@ -86,7 +94,17 @@ RUN mkdir -p build && \
     -DOATPP_SWAGGER_BUILD_TESTS=OFF \
     -DOATPP_POSTGRESQL_BUILD_TESTS=OFF \
     .. && \
-    make -j$(nproc)
+    # Build with minimal parallel jobs and memory constraints
+    make -j1 VERBOSE=1 CXXFLAGS="-O2 -pipe -fno-omit-frame-pointer" || ( \
+    echo "Build failed. Checking system resources..." && \
+    free -h && \
+    df -h && \
+    echo "Checking build directory..." && \
+    ls -la && \
+    echo "Checking CMake cache..." && \
+    cat CMakeCache.txt && \
+    exit 1 \
+    )
 
 # Runtime stage
 FROM ubuntu:22.04
@@ -94,6 +112,8 @@ FROM ubuntu:22.04
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     libpq5 \
+    libssl1.1 \
+    libcurl4 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
