@@ -58,10 +58,11 @@ sudo systemctl enable docker
 
 # Configure Nginx
 echo "🌐 Configuring Nginx..."
+DOMAIN="video-streaming-api-v1.maibammaneesanasingh.studio"  # Your subdomain
 sudo tee /etc/nginx/sites-available/video-streaming << EOF
 server {
     listen 80;
-    server_name subdomain.domain.com;  # Replace with your actual domain
+    server_name $DOMAIN;  # Using the subdomain variable
 
     location / {
         proxy_pass http://localhost:8000;
