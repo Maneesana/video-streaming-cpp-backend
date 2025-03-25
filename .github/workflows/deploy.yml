@@ -118,13 +118,15 @@ jobs:
           # Function to verify EC2 instance is accessible
           verify_ec2_access() {
             echo "Verifying EC2 instance accessibility..."
-            if ! ping -c 1 ${{ secrets.EC2_HOST }}; then
-              echo "❌ Cannot ping EC2 instance. Please check if:"
+            if ! ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"; then
+              echo "❌ Cannot connect to EC2 instance. Please check if:"
               echo "1. The instance is running in AWS Console"
-              echo "2. The security group allows inbound ICMP traffic"
+              echo "2. The security group allows inbound SSH (port 22)"
               echo "3. The instance's public IP is correct"
+              echo "4. The SSH key is valid"
               return 1
             fi
+            echo "✅ EC2 instance is accessible via SSH"
             return 0
           }
 
