@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=db-pass
+      - DB_NAME=postgres
+    depends_on:
+      - db
+    volumes:
+      - ./resources:/app/resources
+      - ./sql:/app/sql
+    networks:
+      - video-streaming-network
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=db-pass
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - video-streaming-network
+
+networks:
+  video-streaming-network:
+    driver: bridge
+
+volumes:
+  postgres_data: 

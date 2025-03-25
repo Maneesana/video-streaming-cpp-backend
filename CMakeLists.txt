@@ -55,7 +55,7 @@ add_library(${PROJECT_NAME}-lib STATIC
     src/controller/MyController.cpp
     src/controller/MyController.hpp    
     src/AppComponent.hpp
-    src/dto/Dtos.hpp
+    src/dto/dtos.hpp
     src/SwaggerComponent.hpp
 )
 
