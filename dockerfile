@@ -19,7 +19,7 @@ WORKDIR /app
 # Copy the entire project
 COPY . .
 
-# Initialize git repository and update submodules (only if not already a git repo)
+# Initialize git repository and update submodules
 RUN if [ ! -d .git ]; then \
     git init && \
     git config --global --add safe.directory /app && \
@@ -27,11 +27,17 @@ RUN if [ ! -d .git ]; then \
     git config --global user.name "Docker Builder" && \
     git add . && \
     git commit -m "Initial commit"; \
-    fi && \
+    fi
+
+# Force update submodules
+RUN git submodule deinit -f . && \
     git submodule update --init --recursive
 
-# Debug: List contents of external directory
-RUN ls -la external/
+# Debug: List contents of directories
+RUN echo "=== Contents of src/dto ===" && \
+    ls -la src/dto/ && \
+    echo "=== Contents of external ===" && \
+    ls -la external/
 
 # Fix line endings and make build scripts executable
 RUN dos2unix configure.sh build.sh run.sh && \
