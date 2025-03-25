@@ -2,12 +2,12 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main] # or your default branch name
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 env:
-  AWS_REGION: us-east-1 # Change this to your AWS region
+  AWS_REGION: us-east-1
   EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
   SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
   APP_DIR: /opt/video-streaming
