@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   AWS_REGION: us-east-1
@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
           fetch-depth: 0
 
       - name: Set up Docker Buildx
@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
           fetch-depth: 0
 
       - name: Configure AWS credentials
@@ -96,16 +96,46 @@ jobs:
           sudo apt-get update
           sudo apt-get upgrade -y
 
+          # Remove old Docker packages
+          echo "🧹 Removing old Docker packages..."
+          sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
+          sudo apt-get autoremove -y
+
+          # Install Docker prerequisites
+          echo "📦 Installing Docker prerequisites..."
+          sudo apt-get install -y \
+              apt-transport-https \
+              ca-certificates \
+              curl \
+              gnupg \
+              lsb-release
+
+          # Add Docker's official GPG key
+          echo "🔑 Adding Docker's GPG key..."
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+          # Set up the Docker repository
+          echo "📦 Setting up Docker repository..."
+          echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+            $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+          # Install Docker
+          echo "📦 Installing Docker..."
+          sudo apt-get update
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
           # Install required dependencies
-          echo "📦 Installing dependencies..."
+          echo "📦 Installing other dependencies..."
           sudo apt-get install -y \
               build-essential \
               cmake \
               git \
               libpq-dev \
-              docker.io \
-              docker-compose \
-              dos2unix
+              dos2unix \
+              nginx \
+              certbot \
+              python3-certbot-nginx
 
           # Start and enable Docker service
           echo "🐳 Setting up Docker..."
