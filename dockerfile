@@ -112,7 +112,7 @@ FROM ubuntu:22.04
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     libpq5 \
-    libssl1.1 \
+    libssl3 \
     libcurl4 \
     && rm -rf /var/lib/apt/lists/*
 
