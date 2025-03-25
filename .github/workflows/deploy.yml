@@ -18,6 +18,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -27,6 +30,25 @@ jobs:
           sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
+
+      - name: Debug: List repository contents
+        run: |
+          echo "=== Repository root ==="
+          ls -la
+          echo "=== Contents of src/dto ==="
+          ls -la src/dto/
+          echo "=== Contents of external ==="
+          ls -la external/
+          echo "=== Git status ==="
+          git status
+          echo "=== Git submodule status ==="
+          git submodule status
+
+      - name: Fix file case sensitivity
+        run: |
+          if [ -f "src/dto/DTOs.hpp" ]; then
+            mv src/dto/DTOs.hpp src/dto/dtos.hpp
+          fi
 
       - name: Build and test
         run: |
@@ -46,6 +68,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1

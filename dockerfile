@@ -19,6 +19,12 @@ WORKDIR /app
 # Copy the entire project
 COPY . .
 
+# Debug: List contents before git operations
+RUN echo "=== Contents before git operations ===" && \
+    ls -la && \
+    echo "=== Contents of src/dto ===" && \
+    ls -la src/dto/
+
 # Initialize git repository and update submodules
 RUN if [ ! -d .git ]; then \
     git init && \
@@ -33,8 +39,10 @@ RUN if [ ! -d .git ]; then \
 RUN git submodule deinit -f . && \
     git submodule update --init --recursive
 
-# Debug: List contents of directories
-RUN echo "=== Contents of src/dto ===" && \
+# Debug: List contents after git operations
+RUN echo "=== Contents after git operations ===" && \
+    ls -la && \
+    echo "=== Contents of src/dto ===" && \
     ls -la src/dto/ && \
     echo "=== Contents of external ===" && \
     ls -la external/
@@ -62,6 +70,12 @@ RUN mkdir -p build/oatpp && \
     ../../external/oatpp && \
     make -j$(nproc) && \
     make install
+
+# Debug: List contents before main build
+RUN echo "=== Contents before main build ===" && \
+    ls -la && \
+    echo "=== Contents of src/dto ===" && \
+    ls -la src/dto/
 
 # Build the main project
 RUN mkdir -p build && \
