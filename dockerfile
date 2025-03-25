@@ -19,13 +19,15 @@ WORKDIR /app
 # Copy the entire project
 COPY . .
 
-# Initialize git repository and update submodules
-RUN git init && \
+# Initialize git repository and update submodules (only if not already a git repo)
+RUN if [ ! -d .git ]; then \
+    git init && \
     git config --global --add safe.directory /app && \
     git config --global user.email "builder@docker.com" && \
     git config --global user.name "Docker Builder" && \
     git add . && \
-    git commit -m "Initial commit" && \
+    git commit -m "Initial commit"; \
+    fi && \
     git submodule update --init --recursive
 
 # Debug: List contents of external directory
