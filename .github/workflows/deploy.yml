@@ -94,14 +94,46 @@ jobs:
           # Wait for container to be ready
           sleep 2
 
-          # Copy artifacts from the container
-          echo "=== Copying artifacts from container ==="
-          echo "=== Container contents ==="
-          docker exec temp_container ls -la /app/build/
-
-          # Copy build artifacts
-          docker cp temp_container:/app/build/. deploy/build/
+          # Create minimal deployment package
+          echo "Creating minimal deployment package..."
+          mkdir -p deploy/build
+          
+          # Copy only necessary files
+          echo "Copying executable and library..."
+          docker cp temp_container:/app/build/video-streaming deploy/build/
+          docker cp temp_container:/app/build/libvideo-streaming-lib.a deploy/build/
+          
+          # Copy docker-compose.yml
           docker cp temp_container:/app/docker-compose.yml deploy/
+
+          # Create deploy.sh script
+          echo "Creating deploy.sh script..."
+          cat > deploy/deploy.sh << 'EOL'
+#!/bin/bash
+
+# Stop any existing containers
+docker-compose down || true
+
+# Build and start the containers
+docker-compose up -d --build
+
+# Wait for the application to be ready
+echo "Waiting for application to start..."
+sleep 10
+
+# Check if the application is running
+if curl -f http://localhost:8000/; then
+    echo "Application is running successfully"
+    exit 0
+else
+    echo "Application failed to start"
+    docker-compose logs
+    exit 1
+fi
+EOL
+
+          # Make deploy.sh executable
+          chmod +x deploy/deploy.sh
 
           # Clean up
           docker stop temp_container
