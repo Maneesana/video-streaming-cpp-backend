@@ -13,13 +13,35 @@ DEBIAN_FRONTEND=noninteractive sudo apt-get update && sudo apt-get install -y \
     certbot \
     python3-certbot-nginx
 
-# Configure Nginx
-echo "🌐 Configuring Nginx..."
+# Configure Nginx with HTTPS
+echo "🌐 Configuring Nginx with HTTPS..."
 DOMAIN="video-streaming-api-v1.maibammaneesanasingh.studio"
+
+# First, configure Nginx for HTTP (needed for initial certbot verification)
 sudo tee /etc/nginx/sites-available/video-streaming << EOF
 server {
     listen 80;
     server_name $DOMAIN;
+    
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name $DOMAIN;
+
+    # SSL configuration
+    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # HSTS (uncomment if you're sure)
+    # add_header Strict-Transport-Security "max-age=63072000" always;
 
     location / {
         proxy_pass http://localhost:8000;
@@ -31,6 +53,8 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-Host \$host;
+        proxy_set_header X-Forwarded-Port \$server_port;
     }
 }
 EOF
@@ -38,8 +62,21 @@ EOF
 # Enable the site
 sudo ln -sf /etc/nginx/sites-available/video-streaming /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
+
+# Test Nginx configuration
 sudo nginx -t
+
+# Install SSL certificate using Certbot
+echo "🔒 Installing SSL certificate..."
+sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email maneesanamaibamsingh@gmail.com
+
+# Restart Nginx
 sudo systemctl restart nginx
+
+# Set up automatic certificate renewal
+echo "🔄 Setting up automatic certificate renewal..."
+sudo systemctl enable certbot.timer
+sudo systemctl start certbot.timer
 
 # Create application directory
 echo "📁 Setting up application directory..."

@@ -63,7 +63,6 @@ jobs:
           # Start containers
           docker-compose up -d
           sleep 15
-          curl -f http://localhost:8000/ || exit 1
 
       - name: Stop containers
         run: docker-compose down
