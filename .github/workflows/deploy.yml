@@ -83,12 +83,13 @@ jobs:
 
           echo "Found image ID: $IMAGE_ID"
 
-          # Create a temporary container from the artifacts stage
-          docker create --name temp_container --from=artifacts $IMAGE_ID
+          # Create a temporary container from the builder stage
+          docker create --name temp_container $IMAGE_ID
 
           # Copy artifacts from the container
           echo "=== Copying artifacts from container ==="
-          docker cp temp_container:/artifacts/. deploy/
+          docker cp temp_container:/app/build/. deploy/build/
+          docker cp temp_container:/app/docker-compose.yml deploy/
 
           # Clean up
           docker rm temp_container
@@ -96,6 +97,8 @@ jobs:
           # Verify contents
           echo "=== Deployment package contents ==="
           ls -la deploy/
+          echo "=== Build directory contents ==="
+          ls -la deploy/build/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
