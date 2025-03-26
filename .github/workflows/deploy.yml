@@ -59,6 +59,21 @@ jobs:
       - name: Stop containers
         run: docker-compose down
 
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp -r build/* deploy/
+          cp -r packages deploy/
+          cp docker-compose.yml deploy/
+          cp deploy.sh deploy/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: deploy-package
+          path: deploy/
+          retention-days: 1
+
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
@@ -68,6 +83,12 @@ jobs:
         with:
           submodules: "recursive"
           fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: deploy-package
+          path: deploy
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -134,7 +155,7 @@ jobs:
           verify_ec2_access || exit 1
 
           echo "=== Copying files to EC2 ==="
-          retry scp -i ~/.ssh/deploy_key -r ./* ubuntu@${{ secrets.EC2_HOST }}:~/app/
+          retry scp -i ~/.ssh/deploy_key -r deploy/* ubuntu@${{ secrets.EC2_HOST }}:~/app/
 
           echo "=== Running deployment script ==="
           retry ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }} "cd ~/app && chmod +x deploy.sh && ./deploy.sh"
