@@ -145,13 +145,37 @@ jobs:
 
       - name: Install SSH key
         run: |
+          # Create .ssh directory with proper permissions
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 700 ~/.ssh
+
+          # Write the SSH key with proper line endings
+          echo "${{ secrets.EC2_SSH_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+
+          # Add host to known_hosts
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-          # Debug: Print host (without exposing the full secret)
-          echo "Connecting to host: ${EC2_HOST:0:10}..."
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -v ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"
+          chmod 644 ~/.ssh/known_hosts
+
+          # Debug information (without exposing sensitive data)
+          echo "SSH directory permissions:"
+          ls -la ~/.ssh/
+          echo "SSH key permissions:"
+          ls -l ~/.ssh/deploy_key
+          echo "Attempting to connect to host: ${EC2_HOST:0:10}..."
+
+          # Test SSH connection with verbose output
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o LogLevel=DEBUG3 ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'" || {
+            echo "SSH connection failed. Checking key format..."
+            head -n 1 ~/.ssh/deploy_key
+            echo "Please verify:"
+            echo "1. The SSH key is in the correct format (should start with '-----BEGIN RSA PRIVATE KEY-----')"
+            echo "2. The key has the correct permissions (600)"
+            echo "3. The host is accessible and the security group allows SSH (port 22)"
+            echo "4. The EC2 instance is running and has the correct public IP"
+            echo "5. The SSH key is added to the authorized_keys on the EC2 instance"
+            exit 1
+          }
 
       - name: Deploy to EC2
         run: |
