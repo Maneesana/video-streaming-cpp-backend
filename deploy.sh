@@ -65,7 +65,8 @@ sudo chown -R $USER:$USER $APP_DIR
 
 # Copy application files
 echo "📦 Copying application files..."
-cp -r ~/app/* $APP_DIR/
+cp -r ~/app/build/* $APP_DIR/
+cp -r ~/app/packages $APP_DIR/
 
 # Set up systemd service
 echo "⚙️ Setting up systemd service..."
@@ -78,6 +79,7 @@ After=network.target postgresql.service
 Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
+Environment=LD_LIBRARY_PATH=$APP_DIR/packages/linux/lib
 ExecStart=$APP_DIR/video-streaming
 Restart=always
 RestartSec=3

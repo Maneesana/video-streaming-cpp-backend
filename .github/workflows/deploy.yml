@@ -103,34 +103,105 @@ jobs:
           docker cp temp_container:/app/build/video-streaming deploy/build/
           docker cp temp_container:/app/build/libvideo-streaming-lib.a deploy/build/
 
-          # Copy Dockerfile and docker-compose.yml
-          echo "Copying Dockerfile and docker-compose.yml..."
-          cp Dockerfile deploy/
-          cp docker-compose.yml deploy/
-
           # Create deploy.sh script
           echo "Creating deploy.sh script..."
           echo '#!/bin/bash' > deploy/deploy.sh
           echo '' >> deploy/deploy.sh
-          echo '# Stop any existing containers' >> deploy/deploy.sh
-          echo 'docker-compose down || true' >> deploy/deploy.sh
+          echo '# Exit on error' >> deploy/deploy.sh
+          echo 'set -e' >> deploy/deploy.sh
           echo '' >> deploy/deploy.sh
-          echo '# Build and start the containers' >> deploy/deploy.sh
-          echo 'docker-compose up -d --build' >> deploy/deploy.sh
+          echo '# Function to check if a command exists' >> deploy/deploy.sh
+          echo 'command_exists() { command -v "$1" >/dev/null 2>&1; }' >> deploy/deploy.sh
           echo '' >> deploy/deploy.sh
-          echo '# Wait for the application to be ready' >> deploy/deploy.sh
-          echo 'echo "Waiting for application to start..."' >> deploy/deploy.sh
-          echo 'sleep 10' >> deploy/deploy.sh
+          echo 'echo "🚀 Starting deployment process..."' >> deploy/deploy.sh
           echo '' >> deploy/deploy.sh
-          echo '# Check if the application is running' >> deploy/deploy.sh
-          echo 'if curl -f http://localhost:8000/; then' >> deploy/deploy.sh
-          echo '    echo "Application is running successfully"' >> deploy/deploy.sh
-          echo '    exit 0' >> deploy/deploy.sh
-          echo 'else' >> deploy/deploy.sh
-          echo '    echo "Application failed to start"' >> deploy/deploy.sh
-          echo '    docker-compose logs' >> deploy/deploy.sh
-          echo '    exit 1' >> deploy/deploy.sh
-          echo 'fi' >> deploy/deploy.sh
+          echo '# Update system packages' >> deploy/deploy.sh
+          echo 'echo "📦 Updating system packages..."' >> deploy/deploy.sh
+          echo 'sudo apt-get update' >> deploy/deploy.sh
+          echo 'sudo apt-get upgrade -y' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Install required dependencies' >> deploy/deploy.sh
+          echo 'echo "📦 Installing dependencies..."' >> deploy/deploy.sh
+          echo 'DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \' >> deploy/deploy.sh
+          echo '    build-essential \' >> deploy/deploy.sh
+          echo '    cmake \' >> deploy/deploy.sh
+          echo '    git \' >> deploy/deploy.sh
+          echo '    libpq-dev \' >> deploy/deploy.sh
+          echo '    dos2unix \' >> deploy/deploy.sh
+          echo '    nginx \' >> deploy/deploy.sh
+          echo '    certbot \' >> deploy/deploy.sh
+          echo '    python3-certbot-nginx' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Configure Nginx' >> deploy/deploy.sh
+          echo 'echo "🌐 Configuring Nginx..."' >> deploy/deploy.sh
+          echo 'DOMAIN="video-streaming-api-v1.maibammaneesanasingh.studio"' >> deploy/deploy.sh
+          echo 'sudo tee /etc/nginx/sites-available/video-streaming << EOF' >> deploy/deploy.sh
+          echo 'server {' >> deploy/deploy.sh
+          echo '    listen 80;' >> deploy/deploy.sh
+          echo '    server_name $DOMAIN;' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '    location / {' >> deploy/deploy.sh
+          echo '        proxy_pass http://localhost:8000;' >> deploy/deploy.sh
+          echo '        proxy_http_version 1.1;' >> deploy/deploy.sh
+          echo '        proxy_set_header Upgrade \$http_upgrade;' >> deploy/deploy.sh
+          echo '        proxy_set_header Connection "upgrade";' >> deploy/deploy.sh
+          echo '        proxy_set_header Host \$host;' >> deploy/deploy.sh
+          echo '        proxy_cache_bypass \$http_upgrade;' >> deploy/deploy.sh
+          echo '        proxy_set_header X-Real-IP \$remote_addr;' >> deploy/deploy.sh
+          echo '        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;' >> deploy/deploy.sh
+          echo '        proxy_set_header X-Forwarded-Proto \$scheme;' >> deploy/deploy.sh
+          echo '    }' >> deploy/deploy.sh
+          echo '}' >> deploy/deploy.sh
+          echo 'EOF' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Enable the site' >> deploy/deploy.sh
+          echo 'sudo ln -sf /etc/nginx/sites-available/video-streaming /etc/nginx/sites-enabled/' >> deploy/deploy.sh
+          echo 'sudo rm -f /etc/nginx/sites-enabled/default' >> deploy/deploy.sh
+          echo 'sudo nginx -t' >> deploy/deploy.sh
+          echo 'sudo systemctl restart nginx' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Create application directory' >> deploy/deploy.sh
+          echo 'echo "📁 Setting up application directory..."' >> deploy/deploy.sh
+          echo 'APP_DIR="/opt/video-streaming-api-v1"' >> deploy/deploy.sh
+          echo 'echo "Cleaning up existing directory if it exists..."' >> deploy/deploy.sh
+          echo 'sudo rm -rf $APP_DIR' >> deploy/deploy.sh
+          echo 'sudo mkdir -p $APP_DIR' >> deploy/deploy.sh
+          echo 'sudo chown -R $USER:$USER $APP_DIR' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Copy application files' >> deploy/deploy.sh
+          echo 'echo "📦 Copying application files..."' >> deploy/deploy.sh
+          echo 'cp -r ~/app/build/* $APP_DIR/' >> deploy/deploy.sh
+          echo 'cp -r ~/app/packages $APP_DIR/' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Set up systemd service' >> deploy/deploy.sh
+          echo 'echo "⚙️ Setting up systemd service..."' >> deploy/deploy.sh
+          echo 'sudo tee /etc/systemd/system/video-streaming.service << EOF' >> deploy/deploy.sh
+          echo '[Unit]' >> deploy/deploy.sh
+          echo 'Description=Video Streaming Service' >> deploy/deploy.sh
+          echo 'After=network.target postgresql.service' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '[Service]' >> deploy/deploy.sh
+          echo 'Type=simple' >> deploy/deploy.sh
+          echo 'User=$USER' >> deploy/deploy.sh
+          echo 'WorkingDirectory=$APP_DIR' >> deploy/deploy.sh
+          echo 'Environment=LD_LIBRARY_PATH=$APP_DIR/packages/linux/lib' >> deploy/deploy.sh
+          echo 'ExecStart=$APP_DIR/video-streaming' >> deploy/deploy.sh
+          echo 'Restart=always' >> deploy/deploy.sh
+          echo 'RestartSec=3' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '[Install]' >> deploy/deploy.sh
+          echo 'WantedBy=multi-user.target' >> deploy/deploy.sh
+          echo 'EOF' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Reload systemd and start service' >> deploy/deploy.sh
+          echo 'echo "🚀 Starting service..."' >> deploy/deploy.sh
+          echo 'sudo systemctl daemon-reload' >> deploy/deploy.sh
+          echo 'sudo systemctl enable video-streaming' >> deploy/deploy.sh
+          echo 'sudo systemctl restart video-streaming' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo 'echo "✅ Deployment completed successfully!"' >> deploy/deploy.sh
+          echo 'echo "📝 You can check the status with: sudo systemctl status video-streaming"' >> deploy/deploy.sh
+          echo 'echo "📝 View logs with: sudo journalctl -u video-streaming -f"' >> deploy/deploy.sh
 
           # Make deploy.sh executable
           chmod +x deploy/deploy.sh
