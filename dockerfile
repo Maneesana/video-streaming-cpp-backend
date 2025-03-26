@@ -109,12 +109,15 @@ RUN mkdir -p build && \
     exit 1 \
     )
 
-# Create artifacts directory
+# Create artifacts directory and copy only necessary files
 RUN mkdir -p /artifacts && \
+    echo "=== Copying build artifacts ===" && \
+    ls -la /app/build/ && \
     cp -r /app/build/* /artifacts/ && \
-    cp -r /app/packages /artifacts/ && \
+    echo "=== Copying configuration files ===" && \
     cp /app/docker-compose.yml /artifacts/ && \
-    cp /app/deploy.sh /artifacts/
+    echo "=== Final artifacts contents ===" && \
+    ls -la /artifacts/
 
 # Runtime stage
 FROM ubuntu:22.04
