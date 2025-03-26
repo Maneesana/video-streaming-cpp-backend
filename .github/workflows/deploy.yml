@@ -145,29 +145,63 @@ jobs:
 
       - name: Install SSH key
         run: |
+          # Debug: Show current user and home directory
+          echo "Current user: $(whoami)"
+          echo "Home directory: $HOME"
+
           # Create .ssh directory with proper permissions
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
+          mkdir -p "$HOME/.ssh"
+          if [ $? -ne 0 ]; then
+            echo "Failed to create .ssh directory"
+            exit 1
+          fi
+
+          # Set permissions for .ssh directory
+          chmod 700 "$HOME/.ssh"
+          if [ $? -ne 0 ]; then
+            echo "Failed to set permissions on .ssh directory"
+            exit 1
+          fi
 
           # Write the SSH key with proper line endings
-          echo "${{ secrets.EC2_SSH_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.EC2_SSH_KEY }}" | tr -d '\r' > "$HOME/.ssh/deploy_key"
+          if [ $? -ne 0 ]; then
+            echo "Failed to write SSH key"
+            exit 1
+          fi
+
+          # Set permissions for SSH key
+          chmod 600 "$HOME/.ssh/deploy_key"
+          if [ $? -ne 0 ]; then
+            echo "Failed to set permissions on SSH key"
+            exit 1
+          fi
 
           # Add host to known_hosts
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> "$HOME/.ssh/known_hosts"
+          if [ $? -ne 0 ]; then
+            echo "Failed to add host to known_hosts"
+            exit 1
+          fi
+
+          # Set permissions for known_hosts
+          chmod 644 "$HOME/.ssh/known_hosts"
+          if [ $? -ne 0 ]; then
+            echo "Failed to set permissions on known_hosts"
+            exit 1
+          fi
 
           # Debug information (without exposing sensitive data)
           echo "SSH directory permissions:"
-          ls -la ~/.ssh/
+          ls -la "$HOME/.ssh/"
           echo "SSH key permissions:"
-          ls -l ~/.ssh/deploy_key
+          ls -l "$HOME/.ssh/deploy_key"
           echo "Attempting to connect to host: ${EC2_HOST:0:10}..."
 
           # Test SSH connection with verbose output
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o LogLevel=DEBUG3 ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'" || {
+          ssh -i "$HOME/.ssh/deploy_key" -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o LogLevel=DEBUG3 ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'" || {
             echo "SSH connection failed. Checking key format..."
-            head -n 1 ~/.ssh/deploy_key
+            head -n 1 "$HOME/.ssh/deploy_key"
             echo "Please verify:"
             echo "1. The SSH key is in the correct format (should start with '-----BEGIN RSA PRIVATE KEY-----')"
             echo "2. The key has the correct permissions (600)"
@@ -209,7 +243,7 @@ jobs:
           # Function to verify EC2 instance is accessible
           verify_ec2_access() {
             echo "Verifying EC2 instance accessibility..."
-            if ! ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"; then
+            if ! ssh -i "$HOME/.ssh/deploy_key" -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"; then
               echo "❌ Cannot connect to EC2 instance. Please check if:"
               echo "1. The instance is running in AWS Console"
               echo "2. The security group allows inbound SSH (port 22)"
@@ -225,7 +259,7 @@ jobs:
           verify_ec2_access || exit 1
 
           echo "=== Copying files to EC2 ==="
-          retry scp -i ~/.ssh/deploy_key -r deploy/* ubuntu@${{ secrets.EC2_HOST }}:~/app/
+          retry scp -i "$HOME/.ssh/deploy_key" -r deploy/* ubuntu@${{ secrets.EC2_HOST }}:~/app/
 
           echo "=== Running deployment script ==="
-          retry ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }} "cd ~/app && chmod +x deploy.sh && ./deploy.sh"
+          retry ssh -i "$HOME/.ssh/deploy_key" ubuntu@${{ secrets.EC2_HOST }} "cd ~/app && chmod +x deploy.sh && ./deploy.sh"
