@@ -3,33 +3,19 @@
 # Exit on error
 set -e
 
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
 echo "🚀 Starting deployment process..."
-
-# Update system packages
-echo "📦 Updating system packages..."
-sudo apt-get update
-sudo apt-get upgrade -y
 
 # Install required dependencies
 echo "📦 Installing dependencies..."
-DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
-    build-essential \
-    cmake \
-    git \
+DEBIAN_FRONTEND=noninteractive sudo apt-get update && sudo apt-get install -y \
     libpq-dev \
-    dos2unix \
     nginx \
     certbot \
     python3-certbot-nginx
 
 # Configure Nginx
 echo "🌐 Configuring Nginx..."
-DOMAIN="video-streaming-api-v1.maibammaneesanasingh.studio"  # Your subdomain
+DOMAIN="video-streaming-api-v1.maibammaneesanasingh.studio"
 sudo tee /etc/nginx/sites-available/video-streaming << EOF
 server {
     listen 80;
@@ -66,7 +52,6 @@ sudo chown -R $USER:$USER $APP_DIR
 # Copy application files
 echo "📦 Copying application files..."
 cp -r ~/app/build/* $APP_DIR/
-cp -r ~/app/packages $APP_DIR/
 
 # Set up systemd service
 echo "⚙️ Setting up systemd service..."
@@ -79,7 +64,6 @@ After=network.target postgresql.service
 Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
-Environment=LD_LIBRARY_PATH=$APP_DIR/packages/linux/lib
 ExecStart=$APP_DIR/video-streaming
 Restart=always
 RestartSec=3

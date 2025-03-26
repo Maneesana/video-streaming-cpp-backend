@@ -171,7 +171,6 @@ jobs:
           echo '# Copy application files' >> deploy/deploy.sh
           echo 'echo "📦 Copying application files..."' >> deploy/deploy.sh
           echo 'cp -r ~/app/build/* $APP_DIR/' >> deploy/deploy.sh
-          echo 'cp -r ~/app/packages $APP_DIR/' >> deploy/deploy.sh
           echo '' >> deploy/deploy.sh
           echo '# Set up systemd service' >> deploy/deploy.sh
           echo 'echo "⚙️ Setting up systemd service..."' >> deploy/deploy.sh
@@ -184,7 +183,6 @@ jobs:
           echo 'Type=simple' >> deploy/deploy.sh
           echo 'User=$USER' >> deploy/deploy.sh
           echo 'WorkingDirectory=$APP_DIR' >> deploy/deploy.sh
-          echo 'Environment=LD_LIBRARY_PATH=$APP_DIR/packages/linux/lib' >> deploy/deploy.sh
           echo 'ExecStart=$APP_DIR/video-streaming' >> deploy/deploy.sh
           echo 'Restart=always' >> deploy/deploy.sh
           echo 'RestartSec=3' >> deploy/deploy.sh
