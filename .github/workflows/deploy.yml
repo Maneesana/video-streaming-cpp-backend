@@ -11,6 +11,8 @@ env:
   EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
   SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
   APP_DIR: /opt/video-streaming
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
   build-and-test:
@@ -51,7 +53,14 @@ jobs:
 
       - name: Build and test
         run: |
-          docker-compose build
+          # Get number of available cores
+          NPROC=$(nproc)
+          echo "Building with $NPROC cores..."
+
+          # Build with parallel jobs
+          docker-compose build --parallel --build-arg BUILDKIT_INLINE_CACHE=1
+
+          # Start containers
           docker-compose up -d
           sleep 15
           curl -f http://localhost:8000/ || exit 1
@@ -61,11 +70,17 @@ jobs:
 
       - name: Create deployment package
         run: |
+          # Create deploy directory
           mkdir -p deploy
-          cp -r build/* deploy/
-          cp -r packages deploy/
-          cp docker-compose.yml deploy/
-          cp deploy.sh deploy/
+
+          # Copy artifacts from the builder container
+          docker create --name temp_container $(docker-compose images -q app)
+          docker cp temp_container:/artifacts/. deploy/
+          docker rm temp_container
+
+          # Verify contents
+          echo "=== Deployment package contents ==="
+          ls -la deploy/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

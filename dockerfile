@@ -69,14 +69,17 @@ ENV OATPP_DISABLE_TESTS=TRUE
 ENV OATPP_SWAGGER_BUILD_TESTS=OFF
 ENV OATPP_POSTGRESQL_BUILD_TESTS=OFF
 
-# Build oatpp first with reduced parallel jobs
+# Get number of available cores
+RUN echo "Number of available cores: $(nproc)"
+
+# Build oatpp first with parallel jobs
 RUN mkdir -p build/oatpp && \
     cd build/oatpp && \
     cmake -DCMAKE_BUILD_TYPE=Debug \
     -DOATPP_BUILD_TESTS=OFF \
     -DOATPP_DISABLE_TESTS=TRUE \
     ../../external/oatpp && \
-    make -j1 && \
+    make -j$(nproc) && \
     make install
 
 # Debug: List contents before main build
@@ -85,7 +88,7 @@ RUN echo "=== Contents before main build ===" && \
     echo "=== Contents of src/dto ===" && \
     ls -la src/dto/
 
-# Build the main project with reduced parallel jobs and memory constraints
+# Build the main project with parallel jobs
 RUN mkdir -p build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Debug \
@@ -94,8 +97,8 @@ RUN mkdir -p build && \
     -DOATPP_SWAGGER_BUILD_TESTS=OFF \
     -DOATPP_POSTGRESQL_BUILD_TESTS=OFF \
     .. && \
-    # Build with minimal parallel jobs and memory constraints
-    make -j1 VERBOSE=1 CXXFLAGS="-O2 -pipe -fno-omit-frame-pointer" || ( \
+    # Build with parallel jobs and memory constraints
+    make -j$(nproc) VERBOSE=1 CXXFLAGS="-O2 -pipe -fno-omit-frame-pointer" || ( \
     echo "Build failed. Checking system resources..." && \
     free -h && \
     df -h && \
@@ -105,6 +108,13 @@ RUN mkdir -p build && \
     cat CMakeCache.txt && \
     exit 1 \
     )
+
+# Create artifacts directory
+RUN mkdir -p /artifacts && \
+    cp -r /app/build/* /artifacts/ && \
+    cp -r /app/packages /artifacts/ && \
+    cp /app/docker-compose.yml /artifacts/ && \
+    cp /app/deploy.sh /artifacts/
 
 # Runtime stage
 FROM ubuntu:22.04
