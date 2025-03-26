@@ -87,8 +87,8 @@ jobs:
 
           echo "Found image ID: $IMAGE_ID"
 
-          # Create and start a temporary container from the builder stage
-          docker create --name temp_container $IMAGE_ID
+          # Create and start a temporary container from the builder stage with a command to keep it running
+          docker create --name temp_container $IMAGE_ID tail -f /dev/null
           docker start temp_container
 
           # Wait for container to be ready
