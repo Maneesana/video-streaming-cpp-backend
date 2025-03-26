@@ -97,40 +97,38 @@ jobs:
           # Create minimal deployment package
           echo "Creating minimal deployment package..."
           mkdir -p deploy/build
-          
+
           # Copy only necessary files
           echo "Copying executable and library..."
           docker cp temp_container:/app/build/video-streaming deploy/build/
           docker cp temp_container:/app/build/libvideo-streaming-lib.a deploy/build/
-          
+
           # Copy docker-compose.yml
           docker cp temp_container:/app/docker-compose.yml deploy/
 
           # Create deploy.sh script
           echo "Creating deploy.sh script..."
-          cat > deploy/deploy.sh << 'EOF'
-#!/bin/bash
-
-# Stop any existing containers
-docker-compose down || true
-
-# Build and start the containers
-docker-compose up -d --build
-
-# Wait for the application to be ready
-echo "Waiting for application to start..."
-sleep 10
-
-# Check if the application is running
-if curl -f http://localhost:8000/; then
-    echo "Application is running successfully"
-    exit 0
-else
-    echo "Application failed to start"
-    docker-compose logs
-    exit 1
-fi
-EOF
+          echo '#!/bin/bash' > deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Stop any existing containers' >> deploy/deploy.sh
+          echo 'docker-compose down || true' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Build and start the containers' >> deploy/deploy.sh
+          echo 'docker-compose up -d --build' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Wait for the application to be ready' >> deploy/deploy.sh
+          echo 'echo "Waiting for application to start..."' >> deploy/deploy.sh
+          echo 'sleep 10' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Check if the application is running' >> deploy/deploy.sh
+          echo 'if curl -f http://localhost:8000/; then' >> deploy/deploy.sh
+          echo '    echo "Application is running successfully"' >> deploy/deploy.sh
+          echo '    exit 0' >> deploy/deploy.sh
+          echo 'else' >> deploy/deploy.sh
+          echo '    echo "Application failed to start"' >> deploy/deploy.sh
+          echo '    docker-compose logs' >> deploy/deploy.sh
+          echo '    exit 1' >> deploy/deploy.sh
+          echo 'fi' >> deploy/deploy.sh
 
           # Make deploy.sh executable
           chmod +x deploy/deploy.sh
