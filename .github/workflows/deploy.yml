@@ -73,8 +73,16 @@ jobs:
           # Create deploy directory
           mkdir -p deploy
 
-          # Copy artifacts from the builder container
-          docker create --name temp_container $(docker-compose images -q app)
+          # Get the image ID and create container
+          IMAGE_ID=$(docker images -q video-streaming-app)
+          if [ -z "$IMAGE_ID" ]; then
+            echo "Error: Could not find the built image"
+            docker images
+            exit 1
+          fi
+
+          echo "Found image ID: $IMAGE_ID"
+          docker create --name temp_container $IMAGE_ID
           docker cp temp_container:/artifacts/. deploy/
           docker rm temp_container
 
