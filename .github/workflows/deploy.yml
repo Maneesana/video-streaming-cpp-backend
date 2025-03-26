@@ -73,6 +73,10 @@ jobs:
           # Create deploy directory
           mkdir -p deploy
 
+          # Build the builder stage separately
+          echo "Building builder stage..."
+          docker build --target builder -t video-streaming-builder .
+
           # Get the image ID and create container
           IMAGE_ID=$(docker images -q video-streaming-builder)
           if [ -z "$IMAGE_ID" ]; then
