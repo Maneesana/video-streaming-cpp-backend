@@ -103,8 +103,10 @@ jobs:
           docker cp temp_container:/app/build/video-streaming deploy/build/
           docker cp temp_container:/app/build/libvideo-streaming-lib.a deploy/build/
 
-          # Copy docker-compose.yml
-          docker cp temp_container:/app/docker-compose.yml deploy/
+          # Copy Dockerfile and docker-compose.yml
+          echo "Copying Dockerfile and docker-compose.yml..."
+          cp Dockerfile deploy/
+          cp docker-compose.yml deploy/
 
           # Create deploy.sh script
           echo "Creating deploy.sh script..."
