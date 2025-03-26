@@ -108,7 +108,7 @@ jobs:
 
           # Create deploy.sh script
           echo "Creating deploy.sh script..."
-          cat > deploy/deploy.sh << 'EOL'
+          cat > deploy/deploy.sh << 'EOF'
 #!/bin/bash
 
 # Stop any existing containers
@@ -130,7 +130,7 @@ else
     docker-compose logs
     exit 1
 fi
-EOL
+EOF
 
           # Make deploy.sh executable
           chmod +x deploy/deploy.sh
