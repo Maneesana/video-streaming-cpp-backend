@@ -103,6 +103,13 @@ jobs:
           docker cp temp_container:/app/build/video-streaming deploy/build/
           docker cp temp_container:/app/build/libvideo-streaming-lib.a deploy/build/
 
+          # Copy oatpp-swagger resources
+          echo "Copying oatpp-swagger resources..."
+          mkdir -p deploy/build/external/oatpp-swagger/res
+          cp -r external/oatpp-swagger/res/* deploy/build/external/oatpp-swagger/res/
+          echo "Oatpp-swagger resources copied:"
+          ls -la deploy/build/external/oatpp-swagger/res/
+
           # Create deploy.sh script
           echo "Creating deploy.sh script..."
           echo '#!/bin/bash' > deploy/deploy.sh
@@ -110,24 +117,12 @@ jobs:
           echo '# Exit on error' >> deploy/deploy.sh
           echo 'set -e' >> deploy/deploy.sh
           echo '' >> deploy/deploy.sh
-          echo '# Function to check if a command exists' >> deploy/deploy.sh
-          echo 'command_exists() { command -v "$1" >/dev/null 2>&1; }' >> deploy/deploy.sh
-          echo '' >> deploy/deploy.sh
           echo 'echo "🚀 Starting deployment process..."' >> deploy/deploy.sh
-          echo '' >> deploy/deploy.sh
-          echo '# Update system packages' >> deploy/deploy.sh
-          echo 'echo "📦 Updating system packages..."' >> deploy/deploy.sh
-          echo 'sudo apt-get update' >> deploy/deploy.sh
-          echo 'sudo apt-get upgrade -y' >> deploy/deploy.sh
           echo '' >> deploy/deploy.sh
           echo '# Install required dependencies' >> deploy/deploy.sh
           echo 'echo "📦 Installing dependencies..."' >> deploy/deploy.sh
-          echo 'DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \' >> deploy/deploy.sh
-          echo '    build-essential \' >> deploy/deploy.sh
-          echo '    cmake \' >> deploy/deploy.sh
-          echo '    git \' >> deploy/deploy.sh
+          echo 'DEBIAN_FRONTEND=noninteractive sudo apt-get update && sudo apt-get install -y \' >> deploy/deploy.sh
           echo '    libpq-dev \' >> deploy/deploy.sh
-          echo '    dos2unix \' >> deploy/deploy.sh
           echo '    nginx \' >> deploy/deploy.sh
           echo '    certbot \' >> deploy/deploy.sh
           echo '    python3-certbot-nginx' >> deploy/deploy.sh
@@ -170,7 +165,28 @@ jobs:
           echo '' >> deploy/deploy.sh
           echo '# Copy application files' >> deploy/deploy.sh
           echo 'echo "📦 Copying application files..."' >> deploy/deploy.sh
-          echo 'cp -r ~/app/build/* $APP_DIR/' >> deploy/deploy.sh
+          echo 'echo "Source directory contents:"' >> deploy/deploy.sh
+          echo 'ls -la ~/app/build/' >> deploy/deploy.sh
+          echo 'echo "Copying files to $APP_DIR..."' >> deploy/deploy.sh
+          echo 'cp -v ~/app/build/video-streaming $APP_DIR/' >> deploy/deploy.sh
+          echo 'cp -v ~/app/build/libvideo-streaming-lib.a $APP_DIR/' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Copy oatpp-swagger resources' >> deploy/deploy.sh
+          echo 'echo "📦 Copying oatpp-swagger resources..."' >> deploy/deploy.sh
+          echo 'mkdir -p $APP_DIR/external/oatpp-swagger/res' >> deploy/deploy.sh
+          echo 'cp -r ~/app/build/external/oatpp-swagger/res/* $APP_DIR/external/oatpp-swagger/res/' >> deploy/deploy.sh
+          echo 'echo "Oatpp-swagger resources copied:"' >> deploy/deploy.sh
+          echo 'ls -la $APP_DIR/external/oatpp-swagger/res/' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo 'echo "Destination directory contents:"' >> deploy/deploy.sh
+          echo 'ls -la $APP_DIR/' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Set proper permissions' >> deploy/deploy.sh
+          echo 'echo "🔒 Setting proper permissions..."' >> deploy/deploy.sh
+          echo 'sudo chmod +x $APP_DIR/video-streaming' >> deploy/deploy.sh
+          echo 'sudo chown -R $USER:$USER $APP_DIR' >> deploy/deploy.sh
+          echo 'echo "Final permissions:"' >> deploy/deploy.sh
+          echo 'ls -l $APP_DIR/video-streaming' >> deploy/deploy.sh
           echo '' >> deploy/deploy.sh
           echo '# Set up systemd service' >> deploy/deploy.sh
           echo 'echo "⚙️ Setting up systemd service..."' >> deploy/deploy.sh
@@ -182,14 +198,28 @@ jobs:
           echo '[Service]' >> deploy/deploy.sh
           echo 'Type=simple' >> deploy/deploy.sh
           echo 'User=$USER' >> deploy/deploy.sh
-          echo 'WorkingDirectory=$APP_DIR' >> deploy/deploy.sh
-          echo 'ExecStart=$APP_DIR/video-streaming' >> deploy/deploy.sh
+          echo 'WorkingDirectory=/opt/video-streaming-api-v1' >> deploy/deploy.sh
+          echo 'Environment=DB_HOST=localhost' >> deploy/deploy.sh
+          echo 'Environment=DB_PORT=5432' >> deploy/deploy.sh
+          echo 'Environment=DB_USER=postgres' >> deploy/deploy.sh
+          echo 'Environment=DB_PASSWORD=db-pass' >> deploy/deploy.sh
+          echo 'Environment=DB_NAME=postgres' >> deploy/deploy.sh
+          echo 'Environment=LD_LIBRARY_PATH=/lib/x86_64-linux-gnu' >> deploy/deploy.sh
+          echo 'ExecStart=/bin/bash -c '\''cd /opt/video-streaming-api-v1 && ./video-streaming'\''' >> deploy/deploy.sh
+          echo 'StandardOutput=append:/var/log/video-streaming.log' >> deploy/deploy.sh
+          echo 'StandardError=append:/var/log/video-streaming.error.log' >> deploy/deploy.sh
           echo 'Restart=always' >> deploy/deploy.sh
           echo 'RestartSec=3' >> deploy/deploy.sh
           echo '' >> deploy/deploy.sh
           echo '[Install]' >> deploy/deploy.sh
           echo 'WantedBy=multi-user.target' >> deploy/deploy.sh
           echo 'EOF' >> deploy/deploy.sh
+          echo '' >> deploy/deploy.sh
+          echo '# Create log files with proper permissions' >> deploy/deploy.sh
+          echo 'echo "📝 Setting up log files..."' >> deploy/deploy.sh
+          echo 'sudo touch /var/log/video-streaming.log /var/log/video-streaming.error.log' >> deploy/deploy.sh
+          echo 'sudo chown $USER:$USER /var/log/video-streaming.log /var/log/video-streaming.error.log' >> deploy/deploy.sh
+          echo 'sudo chmod 644 /var/log/video-streaming.log /var/log/video-streaming.error.log' >> deploy/deploy.sh
           echo '' >> deploy/deploy.sh
           echo '# Reload systemd and start service' >> deploy/deploy.sh
           echo 'echo "🚀 Starting service..."' >> deploy/deploy.sh
