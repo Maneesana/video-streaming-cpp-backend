@@ -115,7 +115,8 @@ Environment=DB_USER=postgres
 Environment=DB_PASSWORD=db-pass
 Environment=DB_NAME=postgres
 Environment=LD_LIBRARY_PATH=/lib/x86_64-linux-gnu
-ExecStart=/bin/bash -c 'cd /opt/video-streaming-api-v1 && ./video-streaming'
+Environment=OATPP_SWAGGER_RES_PATH=/opt/video-streaming-api-v1/external/oatpp-swagger/res
+ExecStart=/bin/bash -c 'cd /opt/video-streaming-api-v1 && OATPP_SWAGGER_RES_PATH=/opt/video-streaming-api-v1/external/oatpp-swagger/res ./video-streaming'
 StandardOutput=append:/var/log/video-streaming.log
 StandardError=append:/var/log/video-streaming.error.log
 Restart=always
