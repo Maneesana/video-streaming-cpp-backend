@@ -119,6 +119,10 @@ RUN mkdir -p /artifacts && \
     echo "=== Final artifacts contents ===" && \
     ls -la /artifacts/
 
+# Create a new stage for artifacts
+FROM scratch AS artifacts
+COPY --from=builder /artifacts /artifacts
+
 # Runtime stage
 FROM ubuntu:22.04
 

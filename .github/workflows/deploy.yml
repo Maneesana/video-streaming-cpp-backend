@@ -82,8 +82,15 @@ jobs:
           fi
 
           echo "Found image ID: $IMAGE_ID"
-          docker create --name temp_container $IMAGE_ID
+
+          # Create a temporary container from the artifacts stage
+          docker create --name temp_container --from=artifacts $IMAGE_ID
+
+          # Copy artifacts from the container
+          echo "=== Copying artifacts from container ==="
           docker cp temp_container:/artifacts/. deploy/
+
+          # Clean up
           docker rm temp_container
 
           # Verify contents
