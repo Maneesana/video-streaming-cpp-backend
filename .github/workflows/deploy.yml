@@ -87,8 +87,12 @@ jobs:
 
           echo "Found image ID: $IMAGE_ID"
 
-          # Create a temporary container from the builder stage
+          # Create and start a temporary container from the builder stage
           docker create --name temp_container $IMAGE_ID
+          docker start temp_container
+
+          # Wait for container to be ready
+          sleep 2
 
           # Copy artifacts from the container
           echo "=== Copying artifacts from container ==="
@@ -100,6 +104,7 @@ jobs:
           docker cp temp_container:/app/docker-compose.yml deploy/
 
           # Clean up
+          docker stop temp_container
           docker rm temp_container
 
           # Verify contents
